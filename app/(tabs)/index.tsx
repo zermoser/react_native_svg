@@ -66,31 +66,39 @@ export default function TimelineChart({
   // Create pronounced zigzag path
   const pathD = useMemo(() => {
     if (!points.length) return "";
-    const amplitude = 20;
+    const amplitude = 30; // เพิ่มความสูงของ zigzag
     let d = `M ${points[0].x} ${points[0].y}`;
 
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const cur = points[i];
 
-      // ช่วงเส้นตรงแรก
-      if (i < straightBefore) {
+      // ช่วงเส้นตรงแรก (จุดที่ 0-1)
+      if (i <= straightBefore) {
         d += ` L ${cur.x} ${cur.y}`;
         continue;
       }
 
-      // ช่วงเส้นตรงสุดท้าย
+      // ช่วงเส้นตรงสุดท้าย (2 จุดสุดท้าย)
       if (i >= points.length - straightAfter) {
         d += ` L ${cur.x} ${cur.y}`;
         continue;
       }
 
-      // ช่วง zigzag
-      const midX = (prev.x + cur.x) / 2;
-      const direction = i % 2 === 0 ? -1 : 1;
-      const midY = centerY + direction * amplitude;
-      d += ` L ${midX} ${midY}`;
-      d += ` L ${cur.x} ${cur.y}`;
+      // ช่วง zigzag - สร้างรูปสามเหลี่ยมแหลมขึ้น-ลง
+      const segmentLength = cur.x - prev.x;
+      const quarterX = prev.x + segmentLength * 0.25;
+      const threeQuarterX = prev.x + segmentLength * 0.75;
+
+      // กำหนดทิศทางของ zigzag (สลับขึ้น-ลง)
+      const direction = (i - straightBefore) % 2 === 1 ? -1 : 1;
+      const peakY = centerY + direction * amplitude;
+
+      // สร้าง path ที่มีจุดแหลมชัดเจน
+      d += ` L ${quarterX} ${centerY}`; // ไปจุดที่ 1/4
+      d += ` L ${prev.x + segmentLength * 0.5} ${peakY}`; // ไปจุดยอดแหลม
+      d += ` L ${threeQuarterX} ${centerY}`; // ไปจุดที่ 3/4
+      d += ` L ${cur.x} ${cur.y}`; // ไปจุดปลายทาง
     }
 
     return d;
