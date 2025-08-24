@@ -93,41 +93,48 @@ export default function TimelineChart({
   // Create pronounced zigzag path
   const pathD = useMemo(() => {
     if (!points.length) return "";
-    const amplitude = 30;
-    let d = `M ${points[0].x} ${points[0].y}`;
+    const baseY = centerY;
+    // ปรับ amplitude ให้สัมพันธ์กับความยาว segment (ไม่ให้ใหญ่เกินไป)
+    const maxAmplitude = Math.min(30, gap * 0.4);
+    let d = `M ${points[0].x} ${baseY}`;
 
     const zigzagStartIndex = 2;
-    const zigzagEndIndex = points.length - 3;
+    const zigzagEndIndex = points.length - 1;
 
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const cur = points[i];
+      const x0 = prev.x;
+      const x1 = cur.x;
+      const segmentLength = x1 - x0;
 
-      if (i < zigzagStartIndex) {
-        d += ` L ${cur.x} ${cur.y}`;
+      // ถ้าช่วงนี้ไม่ใช่ช่วง zigzag หรือสั้นเกินไป ให้วาดเส้นตรง
+      if (i < zigzagStartIndex || i > zigzagEndIndex || segmentLength < 40) {
+        d += ` L ${x1} ${baseY}`;
         continue;
       }
 
-      if (i > zigzagEndIndex) {
-        d += ` L ${cur.x} ${cur.y}`;
-        continue;
-      }
+      // ตำแหน่งกลางแบ่งเป็น 3 จุด (25%,50%,75%) เพื่อวาดขึ้น-ลง-ขึ้น-ลง แบบชัดเจน
+      const p1 = x0 + segmentLength * 0.25;
+      const p2 = x0 + segmentLength * 0.5;
+      const p3 = x0 + segmentLength * 0.75;
 
-      const segmentLength = cur.x - prev.x;
-      const quarterX = prev.x + segmentLength * 0.25;
-      const threeQuarterX = prev.x + segmentLength * 0.75;
+      const amp = Math.min(maxAmplitude, segmentLength * 0.25);
+      const peakY = baseY - amp;
+      const troughY = baseY + amp;
 
-      const direction = (i - zigzagStartIndex) % 2 === 0 ? -1 : 1;
-      const peakY = centerY + direction * amplitude;
-
-      d += ` L ${quarterX} ${centerY}`;
-      d += ` L ${prev.x + segmentLength * 0.5} ${peakY}`;
-      d += ` L ${threeQuarterX} ${centerY}`;
-      d += ` L ${cur.x} ${cur.y}`;
+      // วาดลำดับจุดที่ต่อเนื่อง: base -> peak -> base -> trough -> base -> next point
+      d += ` L ${p1} ${baseY}`;        // เข้าไปยังจุดเริ่มต้นของ zig
+      d += ` L ${p1} ${peakY}`;       // ขึ้นไปจุดสูง
+      d += ` L ${p2} ${baseY}`;       // กลับลงกลาง
+      d += ` L ${p2} ${troughY}`;     // ลงจุดต่ำ
+      d += ` L ${p3} ${baseY}`;       // กลับขึ้นกลางอีกครั้ง
+      d += ` L ${x1} ${baseY}`;       // ต่อไปยังจุดถัดไป (cur)
     }
 
     return d;
-  }, [points, centerY]);
+  }, [points, centerY, gap]);
+
 
   // Find the last payment point
   const lastPaymentPoint = points.find(p => p.lastPayment);
