@@ -22,19 +22,21 @@ type TimelineChartProps = {
   color?: string;
   dotFill?: string;
   lang?: "th" | "en";
-  Quotation?: any;
-  planCode?: string;
 };
 
 // ฟังก์ชันสร้าง SVG string
-function generateSVGString(pointsData: DataPoint[], width: number, height: number) {
+function generateFullSVGString(pointsData: DataPoint[], width: number, height: number) {
   const marginHorizontal = 40;
   const centerY = Math.round(height / 2 + 20);
   const availableW = Math.max(200, width - marginHorizontal * 2);
   const gap = availableW / Math.max(1, pointsData.length - 1);
 
-  const dotRadius = 8;
+  const color = "#2c8592";
+  const dotFill = "#c9e04a";
   const strokeWidth = 3;
+  const dotRadius = 8;
+  const fontSize = 14;
+  const smallFont = 12;
 
   const points = pointsData.map((p, i) => ({
     ...p,
@@ -42,7 +44,7 @@ function generateSVGString(pointsData: DataPoint[], width: number, height: numbe
     y: centerY,
   }));
 
-  // สร้าง zigzag path
+  // Path
   let pathD = `M ${points[0].x} ${centerY}`;
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
@@ -71,19 +73,49 @@ function generateSVGString(pointsData: DataPoint[], width: number, height: numbe
     pathD += ` L ${p1} ${centerY} L ${peakX} ${peakY} L ${p2} ${centerY} L ${troughX} ${troughY} L ${p3} ${centerY} L ${finalX} ${centerY} L ${cur.x} ${centerY}`;
   }
 
-  // สร้าง SVG string
-  let svgString = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-  svgString += `<path d="${pathD}" stroke="#2c8592" stroke-width="${strokeWidth}" fill="none"/>`;
+  let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
 
+  // Main Title & Subtitle
+  svg += `<text x="${width / 2}" y="25" font-size="16" font-weight="600" text-anchor="middle" fill="#333">Coverage Title</text>`;
+  svg += `<text x="${width / 2}" y="42" font-size="14" text-anchor="middle" fill="#666">Subtitle Text</text>`;
+
+  // Path
+  svg += `<path d="${pathD}" stroke="${color}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // Points, year & major labels
   points.forEach(p => {
-    svgString += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="#c9e04a" stroke="#2c8592" stroke-width="2"/>`;
+    svg += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="${dotFill}" stroke="${color}" stroke-width="2"/>`;
     if (p.year) {
-      svgString += `<text x="${p.x}" y="${p.y + 25}" font-size="12" text-anchor="middle" fill="#333">${p.year.replace('A', '')}</text>`;
+      svg += `<text x="${p.x}" y="${p.year.includes('A') ? p.y + 40 : p.y + 25}" font-size="${smallFont}" text-anchor="middle" fill="#333">${p.year.replace('A','')}</text>`;
+    }
+    if (p.year?.includes('A')) {
+      svg += `<text x="${p.x}" y="${p.y + 25}" font-size="${smallFont - 2}" text-anchor="middle" fill="#333">At age</text>`;
     }
   });
 
-  svgString += `</svg>`;
-  return svgString;
+  // Y-axis label
+  svg += `<text x="15" y="${centerY}" font-size="${fontSize}" font-weight="600" text-anchor="middle" fill="#333" transform="rotate(-90 15 ${centerY})">End of Year</text>`;
+
+  // Last payment arrow & value
+  const lastPaymentPoint = points.find(p => p.lastPayment);
+  if (lastPaymentPoint && lastPaymentPoint.value) {
+    svg += `<line x1="${lastPaymentPoint.x}" y1="60" x2="${lastPaymentPoint.x}" y2="${lastPaymentPoint.y-20}" stroke="${color}" stroke-width="3"/>`;
+    svg += `<polygon points="${lastPaymentPoint.x-6},${lastPaymentPoint.y-23} ${lastPaymentPoint.x+6},${lastPaymentPoint.y-23} ${lastPaymentPoint.x},${lastPaymentPoint.y-15}" fill="#1b1b1b"/>`;
+    svg += `<text x="${lastPaymentPoint.x}" y="52" font-size="16" font-weight="700" text-anchor="middle" fill="#333">${lastPaymentPoint.value}</text>`;
+    svg += `<text x="${lastPaymentPoint.x}" y="${lastPaymentPoint.y+60}" font-size="${smallFont}" text-anchor="middle" fill="#333">Premium Payment Finished</text>`;
+  }
+
+  // Left arrow indicator
+  svg += `<line x1="60" y1="80" x2="150" y2="80" stroke="${color}" stroke-width="3"/>`;
+  svg += `<polygon points="50,80 65,75 65,85" fill="#1b1b1b"/>`;
+
+  // Right arrow indicator
+  svg += `<line x1="${width-150}" y1="80" x2="${width-60}" y2="80" stroke="${color}" stroke-width="3"/>`;
+  svg += `<polygon points="${width-50},80 ${width-65},75 ${width-65},85" fill="#1b1b1b"/>`;
+
+  svg += `</svg>`;
+
+  return svg;
 }
 
 export default function TimelineChart({
@@ -93,8 +125,6 @@ export default function TimelineChart({
   color = "#2c8592",
   dotFill = "#c9e04a",
   lang = "th",
-  Quotation,
-  planCode = "",
 }: TimelineChartProps) {
   const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(980, windowWidth - 24);
@@ -207,7 +237,8 @@ export default function TimelineChart({
   // Find the last payment point
   const lastPaymentPoint = points.find(p => p.lastPayment);
 
-  const svgString = generateSVGString(pointsData, width, height);
+  console.log('------------- log -------------');
+  const svgString = generateFullSVGString(pointsData, width, height);
   console.log(svgString);
 
   return (
