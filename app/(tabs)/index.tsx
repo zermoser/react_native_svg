@@ -26,6 +26,66 @@ type TimelineChartProps = {
   planCode?: string;
 };
 
+// ฟังก์ชันสร้าง SVG string
+function generateSVGString(pointsData: DataPoint[], width: number, height: number) {
+  const marginHorizontal = 40;
+  const centerY = Math.round(height / 2 + 20);
+  const availableW = Math.max(200, width - marginHorizontal * 2);
+  const gap = availableW / Math.max(1, pointsData.length - 1);
+
+  const dotRadius = 8;
+  const strokeWidth = 3;
+
+  const points = pointsData.map((p, i) => ({
+    ...p,
+    x: marginHorizontal + gap * i,
+    y: centerY,
+  }));
+
+  // สร้าง zigzag path
+  let pathD = `M ${points[0].x} ${centerY}`;
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const cur = points[i];
+    const segmentLength = cur.x - prev.x;
+
+    if (segmentLength < 40) {
+      pathD += ` L ${cur.x} ${centerY}`;
+      continue;
+    }
+
+    const straightLength = Math.min(20, segmentLength / 6);
+    const zigzagWidth = segmentLength - 2 * straightLength;
+    const ampX = zigzagWidth / 6;
+    const ampY = ampX;
+
+    const p1 = prev.x + straightLength + 10;
+    const peakX = p1 + ampX;
+    const p2 = peakX + ampX;
+    const troughX = p2 + ampX;
+    const p3 = troughX + ampX;
+    const finalX = cur.x - straightLength - 10;
+    const peakY = centerY - ampY;
+    const troughY = centerY + ampY;
+
+    pathD += ` L ${p1} ${centerY} L ${peakX} ${peakY} L ${p2} ${centerY} L ${troughX} ${troughY} L ${p3} ${centerY} L ${finalX} ${centerY} L ${cur.x} ${centerY}`;
+  }
+
+  // สร้าง SVG string
+  let svgString = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
+  svgString += `<path d="${pathD}" stroke="#2c8592" stroke-width="${strokeWidth}" fill="none"/>`;
+
+  points.forEach(p => {
+    svgString += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="#c9e04a" stroke="#2c8592" stroke-width="2"/>`;
+    if (p.year) {
+      svgString += `<text x="${p.x}" y="${p.y + 25}" font-size="12" text-anchor="middle" fill="#333">${p.year.replace('A', '')}</text>`;
+    }
+  });
+
+  svgString += `</svg>`;
+  return svgString;
+}
+
 export default function TimelineChart({
   data,
   height = 280,
@@ -146,6 +206,9 @@ export default function TimelineChart({
 
   // Find the last payment point
   const lastPaymentPoint = points.find(p => p.lastPayment);
+
+  const svgString = generateSVGString(pointsData, width, height);
+  console.log(svgString);
 
   return (
     <View style={[styles.container, { width }]}>
