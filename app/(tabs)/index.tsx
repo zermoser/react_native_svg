@@ -94,7 +94,6 @@ export default function TimelineChart({
   const pathD = useMemo(() => {
     if (!points.length) return "";
     const baseY = centerY;
-    // ปรับ amplitude ให้สัมพันธ์กับความยาว segment (ไม่ให้ใหญ่เกินไป)
     const maxAmplitude = Math.min(30, gap * 0.4);
     let d = `M ${points[0].x} ${baseY}`;
 
@@ -108,33 +107,37 @@ export default function TimelineChart({
       const x1 = cur.x;
       const segmentLength = x1 - x0;
 
-      // ถ้าช่วงนี้ไม่ใช่ช่วง zigzag หรือสั้นเกินไป ให้วาดเส้นตรง
       if (i < zigzagStartIndex || i > zigzagEndIndex || segmentLength < 40) {
         d += ` L ${x1} ${baseY}`;
         continue;
       }
 
-      // ตำแหน่งกลางแบ่งเป็น 3 จุด (25%,50%,75%) เพื่อวาดขึ้น-ลง-ขึ้น-ลง แบบชัดเจน
-      const p1 = x0 + segmentLength * 0.25;
-      const p2 = x0 + segmentLength * 0.5;
-      const p3 = x0 + segmentLength * 0.75;
+      // กำหนดความยาวเริ่มต้นและสิ้นสุดให้เท่ากับกัน
+      let ampX = Math.min(maxAmplitude, segmentLength / 6); // Δx ของแต่ละสามเหลี่ยม
+      let ampY = ampX; // 45° slope
 
-      const amp = Math.min(maxAmplitude, segmentLength * 0.25);
-      const peakY = baseY - amp;
-      const troughY = baseY + amp;
+      // จุดเริ่มต้นและจุด zigzag
+      const p1 = x0 + ampX;          // จุดเริ่ม base -> ขึ้น
+      const peakX = p1 + ampX;       // จุดสูง
+      const p2 = peakX + ampX;       // base
+      const troughX = p2 + ampX;     // จุดต่ำ
+      const p3 = troughX + ampX;     // base ก่อนเส้นสุดท้าย
+      const finalX = x1;             // จุดสุดท้าย
 
-      // วาดลำดับจุดที่ต่อเนื่อง: base -> peak -> base -> trough -> base -> next point
-      d += ` L ${p1} ${baseY}`;        // เข้าไปยังจุดเริ่มต้นของ zig
-      d += ` L ${p1} ${peakY}`;       // ขึ้นไปจุดสูง
-      d += ` L ${p2} ${baseY}`;       // กลับลงกลาง
-      d += ` L ${p2} ${troughY}`;     // ลงจุดต่ำ
-      d += ` L ${p3} ${baseY}`;       // กลับขึ้นกลางอีกครั้ง
-      d += ` L ${x1} ${baseY}`;       // ต่อไปยังจุดถัดไป (cur)
+      const peakY = baseY - ampY;
+      const troughY = baseY + ampY;
+
+      // วาดลำดับจุด
+      d += ` L ${p1} ${baseY}`;       // เส้นตรงเริ่มต้น
+      d += ` L ${peakX} ${peakY}`;    // ขึ้นเฉียง 45°
+      d += ` L ${p2} ${baseY}`;       // กลับ base
+      d += ` L ${troughX} ${troughY}`;// ลงเฉียง 45°
+      d += ` L ${p3} ${baseY}`;       // กลับ base
+      d += ` L ${finalX} ${baseY}`;   // เส้นตรงสุดท้าย (ยาว = x0→p1)
     }
 
     return d;
   }, [points, centerY, gap]);
-
 
   // Find the last payment point
   const lastPaymentPoint = points.find(p => p.lastPayment);
