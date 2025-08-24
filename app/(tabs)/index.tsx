@@ -12,8 +12,8 @@ type DataPoint = {
 
 export default function TimelineChart({
   data,
-  height = 220,
-  marginHorizontal = 16,
+  height = 280,
+  marginHorizontal = 40,
   color = "#2c8592",
   dotFill = "#c9e04a",
 }: {
@@ -44,15 +44,14 @@ export default function TimelineChart({
 
   const pointsData = data && data.length ? data : defaultData;
 
-  const centerY = Math.round(height / 2 + 8);
-  const availableW = Math.max(120, width - marginHorizontal * 2);
+  const centerY = Math.round(height / 2 + 20);
+  const availableW = Math.max(200, width - marginHorizontal * 2);
   const gap = availableW / Math.max(1, pointsData.length - 1);
 
-  const rBase = Math.max(4, Math.round(width / 160));
-  const dotRadius = rBase + 3;
-  const strokeWidth = Math.max(2, Math.round(width / 320));
-  const fontSize = Math.max(10, Math.round(width / 72));
-  const smallFont = Math.max(9, Math.round(fontSize * 0.9));
+  const dotRadius = 8;
+  const strokeWidth = 3;
+  const fontSize = 14;
+  const smallFont = 12;
 
   const points = pointsData.map((p, i) => ({
     ...p,
@@ -61,13 +60,10 @@ export default function TimelineChart({
     index: i,
   }));
 
-  // Build a polyline-like path with straight segments (no curves).
-  // To create the zigzag, we insert a mid-point between each pair of main points
-  // at x = midX and y = centerY +/- amplitude. Then draw straight 'L' segments
-  // between points and midpoints, producing sharp peaks instead of smooth curves.
+  // Create pronounced zigzag path
   const pathD = useMemo(() => {
     if (!points.length) return "";
-    const baseAmp = Math.max(8, Math.round(width / 120));
+    const amplitude = 35; // Increased amplitude for more pronounced zigzag
 
     let d = `M ${points[0].x} ${points[0].y}`;
 
@@ -75,60 +71,138 @@ export default function TimelineChart({
       const prev = points[i - 1];
       const cur = points[i];
       const midX = (prev.x + cur.x) / 2;
-      const isMajor = !!cur.major;
-      const amp = isMajor ? Math.round(baseAmp * 0.6) : baseAmp;
-      const dir = i % 2 === 0 ? -1 : 1; // alternate up/down
-      const midY = centerY + dir * amp;
 
-      // line from prev to mid (creates straight slanted segment)
+      // Alternate direction for each segment to create zigzag
+      const direction = i % 2 === 0 ? -1 : 1;
+      const midY = centerY + (direction * amplitude);
+
+      // Create sharp zigzag by going to mid point then to current point
       d += ` L ${midX} ${midY}`;
-      // line from mid to current (straight back to baseline)
       d += ` L ${cur.x} ${cur.y}`;
     }
 
     return d;
-  }, [points, centerY, width]);
+  }, [points, centerY]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
   return (
     <View style={[styles.container, { width }]}>
       <Svg width={width} height={height}>
-        <SvgText x={width / 2} y={16} fontSize={Math.max(11, Math.round(fontSize * 0.95))} fontWeight="600" textAnchor="middle">
+        {/* Main Title */}
+        <SvgText
+          x={width / 2}
+          y={25}
+          fontSize={16}
+          fontWeight="600"
+          textAnchor="middle"
+          fill="#333"
+        >
           ความคุ้มครองชีวิต : จำนวนที่มากกว่าระหว่าง 100% ของทุนประกันภัย
         </SvgText>
-        <SvgText x={width / 2} y={30} fontSize={Math.max(10, Math.round(smallFont))} textAnchor="middle">
+
+        {/* Subtitle */}
+        <SvgText
+          x={width / 2}
+          y={42}
+          fontSize={14}
+          textAnchor="middle"
+          fill="#666"
+        >
           หรือ มูลค่าเวนคืนเงินสด หรือ เบี้ยประกันภัยสะสม
         </SvgText>
 
-        {/* baseline faint line */}
-        <Line x1={points[0].x} y1={centerY} x2={points[points.length - 1].x} y2={centerY} stroke={color} strokeWidth={strokeWidth} opacity={0.2} strokeLinecap="round" />
+        {/* Baseline horizontal line */}
+        <Line
+          x1={points[0].x - 20}
+          y1={centerY}
+          x2={points[points.length - 1].x + 20}
+          y2={centerY}
+          stroke={color}
+          strokeWidth={2}
+          opacity={0.3}
+        />
 
-        {/* straight zigzag path (no curves) */}
-        <Path d={pathD} stroke={color} strokeWidth={strokeWidth + 1} fill="none" strokeLinecap="butt" strokeLinejoin="miter" />
+        {/* Zigzag path */}
+        <Path
+          d={pathD}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
+        {/* Data points and labels */}
         <G>
-          {points.map((p) => (
+          {points.map((p, index) => (
             <G key={p.id}>
-              <Circle cx={p.x} cy={p.y} r={dotRadius} fill={dotFill} stroke={color} strokeWidth={2} />
+              {/* Data point circle */}
+              <Circle
+                cx={p.x}
+                cy={p.y}
+                r={dotRadius}
+                fill={dotFill}
+                stroke={color}
+                strokeWidth={2}
+              />
 
-              <Circle cx={p.x} cy={p.y} r={dotRadius * 2.4} fill="transparent" onPress={() => setActiveId((cur) => (cur === p.id ? null : p.id))} />
+              {/* Clickable area */}
+              <Circle
+                cx={p.x}
+                cy={p.y}
+                r={dotRadius * 2}
+                fill="transparent"
+                onPress={() => setActiveId((cur) => (cur === p.id ? null : p.id))}
+              />
 
-              {p.note ? (
-                <SvgText x={p.x} y={p.y + 22} fontSize={smallFont} textAnchor="middle">
-                  {p.note}
+              {/* Labels below points */}
+              {p.major && p.note ? (
+                <SvgText
+                  x={p.x}
+                  y={p.y + 30}
+                  fontSize={smallFont}
+                  textAnchor="middle"
+                  fill="#333"
+                >
+                  {p.note.replace('\n', ' ')}
                 </SvgText>
               ) : p.label ? (
-                <SvgText x={p.x} y={p.y + 20} fontSize={smallFont} textAnchor="middle">
+                <SvgText
+                  x={p.x}
+                  y={p.y + 25}
+                  fontSize={smallFont}
+                  textAnchor="middle"
+                  fill="#333"
+                >
                   {p.label}
                 </SvgText>
               ) : null}
 
-              {activeId === p.id && (p.value || p.note) ? (
+              {/* Tooltip on click */}
+              {activeId === p.id && p.value ? (
                 <G>
-                  <Rect x={p.x - 48} y={p.y - 64} rx={6} ry={6} width={96} height={34} fill="#ffffff" stroke={color} strokeWidth={1} opacity={0.98} />
-                  <SvgText x={p.x} y={p.y - 44} fontSize={smallFont} fontWeight="700" textAnchor="middle">
-                    {p.value ?? p.note?.split("\n")[0]}
+                  <Rect
+                    x={p.x - 40}
+                    y={p.y - 50}
+                    rx={6}
+                    ry={6}
+                    width={80}
+                    height={30}
+                    fill="#ffffff"
+                    stroke={color}
+                    strokeWidth={1}
+                    opacity={0.98}
+                  />
+                  <SvgText
+                    x={p.x}
+                    y={p.y - 32}
+                    fontSize={smallFont}
+                    fontWeight="700"
+                    textAnchor="middle"
+                    fill="#333"
+                  >
+                    {p.value}
                   </SvgText>
                 </G>
               ) : null}
@@ -136,34 +210,83 @@ export default function TimelineChart({
           ))}
         </G>
 
-        <SvgText x={10} y={centerY} fontSize={Math.max(12, fontSize)} fontWeight="600" transform={`rotate(-90 10 ${centerY})`} textAnchor="middle">
+        {/* Y-axis label */}
+        <SvgText
+          x={15}
+          y={centerY}
+          fontSize={fontSize}
+          fontWeight="600"
+          transform={`rotate(-90 15 ${centerY})`}
+          textAnchor="middle"
+          fill="#333"
+        >
           สิ้นปีกรมธรรม์ที่
         </SvgText>
 
+        {/* Arrow and final value for last point */}
         {(() => {
           const last = points[points.length - 1];
-          if (!last) return null;
+          if (!last || !last.value) return null;
+
           const arrowX = last.x;
-          const arrowTopY = 36;
-          const arrowBottomY = last.y + 8;
+          const arrowStartY = 60;
+          const arrowEndY = last.y - 15;
 
           return (
             <G>
-              <Line x1={arrowX} y1={arrowTopY} x2={arrowX} y2={arrowBottomY} stroke={color} strokeWidth={strokeWidth} />
-              <Polygon points={`${arrowX - 7},${arrowTopY + 12} ${arrowX + 7},${arrowTopY + 12} ${arrowX},${arrowTopY}`} fill={color} />
+              {/* Vertical arrow line */}
+              <Line
+                x1={arrowX}
+                y1={arrowStartY}
+                x2={arrowX}
+                y2={arrowEndY}
+                stroke={color}
+                strokeWidth={3}
+              />
 
-              {last.value ? (
-                <SvgText x={arrowX} y={arrowTopY - 8} fontSize={Math.max(11, fontSize)} fontWeight="700" textAnchor="middle">
-                  {last.value}
-                </SvgText>
-              ) : null}
+              {/* Arrow head pointing down to the point */}
+              <Polygon
+                points={`${arrowX - 6},${arrowEndY - 8} ${arrowX + 6},${arrowEndY - 8} ${arrowX},${arrowEndY}`}
+                fill={color}
+              />
 
-              <SvgText x={arrowX} y={arrowBottomY + 26} fontSize={smallFont} textAnchor="middle">
+              {/* Value above arrow */}
+              <SvgText
+                x={arrowX}
+                y={arrowStartY - 8}
+                fontSize={16}
+                fontWeight="700"
+                textAnchor="middle"
+                fill="#333"
+              >
+                {last.value}
+              </SvgText>
+
+              {/* Label below the last point */}
+              <SvgText
+                x={arrowX}
+                y={last.y + 50}
+                fontSize={smallFont}
+                textAnchor="middle"
+                fill="#333"
+              >
                 ชำระเบี้ยครบ
               </SvgText>
             </G>
           );
         })()}
+
+        {/* Left arrow indicator */}
+        <G>
+          <Line x1={50} y1={80} x2={150} y2={80} stroke={color} strokeWidth={3} />
+          <Polygon points="50,80 65,75 65,85" fill={color} />
+        </G>
+
+        {/* Right arrow indicator */}
+        <G>
+          <Line x1={width - 150} y1={80} x2={width - 50} y2={80} stroke={color} strokeWidth={3} />
+          <Polygon points={`${width - 50},80 ${width - 65},75 ${width - 65},85`} fill={color} />
+        </G>
       </Svg>
     </View>
   );
@@ -173,5 +296,6 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: "center",
     padding: 8,
+    backgroundColor: '#f8f9fa',
   },
 });
