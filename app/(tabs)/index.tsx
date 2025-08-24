@@ -94,7 +94,7 @@ export default function TimelineChart({
   const pathD = useMemo(() => {
     if (!points.length) return "";
     const baseY = centerY;
-    const maxAmplitude = Math.min(30, gap * 0.4);
+    const maxAmplitude = Math.min(20, gap * 0.4); // สูงสุด zigzag
     let d = `M ${points[0].x} ${baseY}`;
 
     const zigzagStartIndex = 2;
@@ -112,28 +112,33 @@ export default function TimelineChart({
         continue;
       }
 
-      // กำหนดความยาวเริ่มต้นและสิ้นสุดให้เท่ากับกัน
-      let ampX = Math.min(maxAmplitude, segmentLength / 6); // Δx ของแต่ละสามเหลี่ยม
-      let ampY = ampX; // 45° slope
+      // ความยาวเส้นตรงเริ่มและจบของ segment เท่ากัน
+      const straightLength = Math.min(maxAmplitude, segmentLength / 6);
 
-      // จุดเริ่มต้นและจุด zigzag
-      const p1 = x0 + ampX;          // จุดเริ่ม base -> ขึ้น
-      const peakX = p1 + ampX;       // จุดสูง
-      const p2 = peakX + ampX;       // base
-      const troughX = p2 + ampX;     // จุดต่ำ
-      const p3 = troughX + ampX;     // base ก่อนเส้นสุดท้าย
-      const finalX = x1;             // จุดสุดท้าย
+      // ความกว้าง zigzag (แบ่งเหลือจากเส้นตรงเริ่ม-จบ)
+      const zigzagWidth = segmentLength - 2 * straightLength;
+      const ampX = zigzagWidth / 6; // 3 peaks (ขึ้น-ลง-ขึ้น)
+      const ampY = ampX; // 45°
+
+      // จุด zigzag
+      const p1 = x0 + straightLength + 10;
+      const peakX = p1 + ampX;
+      const p2 = peakX + ampX;
+      const troughX = p2 + ampX;
+      const p3 = troughX + ampX;
+      const finalX = x1 - straightLength - 10;
 
       const peakY = baseY - ampY;
       const troughY = baseY + ampY;
 
-      // วาดลำดับจุด
-      d += ` L ${p1} ${baseY}`;       // เส้นตรงเริ่มต้น
-      d += ` L ${peakX} ${peakY}`;    // ขึ้นเฉียง 45°
-      d += ` L ${p2} ${baseY}`;       // กลับ base
-      d += ` L ${troughX} ${troughY}`;// ลงเฉียง 45°
-      d += ` L ${p3} ${baseY}`;       // กลับ base
-      d += ` L ${finalX} ${baseY}`;   // เส้นตรงสุดท้าย (ยาว = x0→p1)
+      // วาด path
+      d += ` L ${p1} ${baseY}`;        // เส้นตรงเริ่ม
+      d += ` L ${peakX} ${peakY}`;     // ขึ้นเฉียง
+      d += ` L ${p2} ${baseY}`;        // กลาง
+      d += ` L ${troughX} ${troughY}`; // ลงเฉียง
+      d += ` L ${p3} ${baseY}`;        // กลาง
+      d += ` L ${finalX} ${baseY}`;    // เส้นตรงสุดท้าย
+      d += ` L ${x1} ${baseY}`;        // ปิด segment
     }
 
     return d;
