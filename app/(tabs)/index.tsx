@@ -60,23 +60,35 @@ export default function TimelineChart({
     index: i,
   }));
 
+  const straightBefore = 2; // เส้นตรงก่อนเริ่ม zigzag (จำนวนจุด)
+  const straightAfter = 2;  // เส้นตรงหลัง zigzag
+
   // Create pronounced zigzag path
   const pathD = useMemo(() => {
     if (!points.length) return "";
-    const amplitude = 35; // Increased amplitude for more pronounced zigzag
-
+    const amplitude = 20;
     let d = `M ${points[0].x} ${points[0].y}`;
 
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const cur = points[i];
+
+      // ช่วงเส้นตรงแรก
+      if (i < straightBefore) {
+        d += ` L ${cur.x} ${cur.y}`;
+        continue;
+      }
+
+      // ช่วงเส้นตรงสุดท้าย
+      if (i >= points.length - straightAfter) {
+        d += ` L ${cur.x} ${cur.y}`;
+        continue;
+      }
+
+      // ช่วง zigzag
       const midX = (prev.x + cur.x) / 2;
-
-      // Alternate direction for each segment to create zigzag
       const direction = i % 2 === 0 ? -1 : 1;
-      const midY = centerY + (direction * amplitude);
-
-      // Create sharp zigzag by going to mid point then to current point
+      const midY = centerY + direction * amplitude;
       d += ` L ${midX} ${midY}`;
       d += ` L ${cur.x} ${cur.y}`;
     }
