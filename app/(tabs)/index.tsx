@@ -24,100 +24,6 @@ type TimelineChartProps = {
   lang?: "th" | "en";
 };
 
-// ฟังก์ชันสร้าง SVG string
-function generateFullSVGString(pointsData: DataPoint[], width: number, height: number) {
-  const marginHorizontal = 40;
-  const centerY = Math.round(height / 2 + 20);
-  const availableW = Math.max(200, width - marginHorizontal * 2);
-  const gap = availableW / Math.max(1, pointsData.length - 1);
-
-  const color = "#2c8592";
-  const dotFill = "#c9e04a";
-  const strokeWidth = 3;
-  const dotRadius = 8;
-  const fontSize = 14;
-  const smallFont = 12;
-
-  const points = pointsData.map((p, i) => ({
-    ...p,
-    x: marginHorizontal + gap * i,
-    y: centerY,
-  }));
-
-  // Path
-  let pathD = `M ${points[0].x} ${centerY}`;
-  for (let i = 1; i < points.length; i++) {
-    const prev = points[i - 1];
-    const cur = points[i];
-    const segmentLength = cur.x - prev.x;
-
-    if (segmentLength < 40) {
-      pathD += ` L ${cur.x} ${centerY}`;
-      continue;
-    }
-
-    const straightLength = Math.min(20, segmentLength / 6);
-    const zigzagWidth = segmentLength - 2 * straightLength;
-    const ampX = zigzagWidth / 6;
-    const ampY = ampX;
-
-    const p1 = prev.x + straightLength + 10;
-    const peakX = p1 + ampX;
-    const p2 = peakX + ampX;
-    const troughX = p2 + ampX;
-    const p3 = troughX + ampX;
-    const finalX = cur.x - straightLength - 10;
-    const peakY = centerY - ampY;
-    const troughY = centerY + ampY;
-
-    pathD += ` L ${p1} ${centerY} L ${peakX} ${peakY} L ${p2} ${centerY} L ${troughX} ${troughY} L ${p3} ${centerY} L ${finalX} ${centerY} L ${cur.x} ${centerY}`;
-  }
-
-  let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">`;
-
-  // Main Title & Subtitle
-  svg += `<text x="${width / 2}" y="25" font-size="16" font-weight="600" text-anchor="middle" fill="#333">Coverage Title</text>`;
-  svg += `<text x="${width / 2}" y="42" font-size="14" text-anchor="middle" fill="#666">Subtitle Text</text>`;
-
-  // Path
-  svg += `<path d="${pathD}" stroke="${color}" stroke-width="${strokeWidth}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
-
-  // Points, year & major labels
-  points.forEach(p => {
-    svg += `<circle cx="${p.x}" cy="${p.y}" r="${dotRadius}" fill="${dotFill}" stroke="${color}" stroke-width="2"/>`;
-    if (p.year) {
-      svg += `<text x="${p.x}" y="${p.year.includes('A') ? p.y + 40 : p.y + 25}" font-size="${smallFont}" text-anchor="middle" fill="#333">${p.year.replace('A','')}</text>`;
-    }
-    if (p.year?.includes('A')) {
-      svg += `<text x="${p.x}" y="${p.y + 25}" font-size="${smallFont - 2}" text-anchor="middle" fill="#333">At age</text>`;
-    }
-  });
-
-  // Y-axis label
-  svg += `<text x="15" y="${centerY}" font-size="${fontSize}" font-weight="600" text-anchor="middle" fill="#333" transform="rotate(-90 15 ${centerY})">End of Year</text>`;
-
-  // Last payment arrow & value
-  const lastPaymentPoint = points.find(p => p.lastPayment);
-  if (lastPaymentPoint && lastPaymentPoint.value) {
-    svg += `<line x1="${lastPaymentPoint.x}" y1="60" x2="${lastPaymentPoint.x}" y2="${lastPaymentPoint.y-20}" stroke="${color}" stroke-width="3"/>`;
-    svg += `<polygon points="${lastPaymentPoint.x-6},${lastPaymentPoint.y-23} ${lastPaymentPoint.x+6},${lastPaymentPoint.y-23} ${lastPaymentPoint.x},${lastPaymentPoint.y-15}" fill="#1b1b1b"/>`;
-    svg += `<text x="${lastPaymentPoint.x}" y="52" font-size="16" font-weight="700" text-anchor="middle" fill="#333">${lastPaymentPoint.value}</text>`;
-    svg += `<text x="${lastPaymentPoint.x}" y="${lastPaymentPoint.y+60}" font-size="${smallFont}" text-anchor="middle" fill="#333">Premium Payment Finished</text>`;
-  }
-
-  // Left arrow indicator
-  svg += `<line x1="60" y1="80" x2="150" y2="80" stroke="${color}" stroke-width="3"/>`;
-  svg += `<polygon points="50,80 65,75 65,85" fill="#1b1b1b"/>`;
-
-  // Right arrow indicator
-  svg += `<line x1="${width-150}" y1="80" x2="${width-60}" y2="80" stroke="${color}" stroke-width="3"/>`;
-  svg += `<polygon points="${width-50},80 ${width-65},75 ${width-65},85" fill="#1b1b1b"/>`;
-
-  svg += `</svg>`;
-
-  return svg;
-}
-
 export default function TimelineChart({
   data,
   height = 280,
@@ -187,9 +93,6 @@ export default function TimelineChart({
     const maxAmplitude = Math.min(20, gap * 0.4); // สูงสุด zigzag
     let d = `M ${points[0].x} ${baseY}`;
 
-    const zigzagStartIndex = 2;
-    const zigzagEndIndex = points.length - 1;
-
     for (let i = 1; i < points.length; i++) {
       const prev = points[i - 1];
       const cur = points[i];
@@ -197,7 +100,7 @@ export default function TimelineChart({
       const x1 = cur.x;
       const segmentLength = x1 - x0;
 
-      if (i < zigzagStartIndex || i > zigzagEndIndex || segmentLength < 40) {
+      if (i !== 4 && i !== 5 && i !== 7) {
         d += ` L ${x1} ${baseY}`;
         continue;
       }
@@ -236,10 +139,6 @@ export default function TimelineChart({
 
   // Find the last payment point
   const lastPaymentPoint = points.find(p => p.lastPayment);
-
-  console.log('------------- log -------------');
-  const svgString = generateFullSVGString(pointsData, width, height);
-  console.log(svgString);
 
   return (
     <View style={[styles.container, { width }]}>
