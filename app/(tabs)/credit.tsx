@@ -134,7 +134,7 @@ export default function Credit() {
 
           {/* Title */}
           <Text style={styles.title} >React Native</Text>
-          <Text style={styles.title}>Todo List</Text>
+          <Text style={styles.title}>Simple react native svg</Text>
 
           {/* Creator info */}
           <View style={styles.creatorContainer}>
