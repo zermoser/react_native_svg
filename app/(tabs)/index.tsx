@@ -112,18 +112,7 @@ export default function TimelineChart({
           หรือ มูลค่าเวนคืนเงินสด หรือ เบี้ยประกันภัยสะสม
         </SvgText>
 
-        {/* Baseline horizontal line */}
-        <Line
-          x1={points[0].x - 20}
-          y1={centerY}
-          x2={points[points.length - 1].x + 20}
-          y2={centerY}
-          stroke={color}
-          strokeWidth={2}
-          opacity={0.3}
-        />
-
-        {/* Zigzag path */}
+        {/* Mixed path: straight lines + zigzag */}
         <Path
           d={pathD}
           stroke={color}
